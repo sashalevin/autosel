@@ -39,7 +39,7 @@ fn main() {
         .arg(Arg::new("models")
             .long("models")
             .value_name("MODELS")
-            .help("Comma-separated list of models to use (claude, openai, nvidia, ollama, kiro)")
+            .help("Comma-separated list of models to use (claude, openai, nvidia, ollama, kiro, goose)")
             .num_args(1))
         .arg(Arg::new("train")
             .long("train")
@@ -107,6 +107,11 @@ fn main() {
             .long("exec-params")
             .value_name("PARAMS")
             .help("Comma-separated list of parameters to pass to the executable")
+            .num_args(1))
+        .arg(Arg::new("goose-builtins")
+            .long("goose-builtins")
+            .value_name("NAMES")
+            .help("Comma-separated goose builtin extensions to enable when using 'goose' as a model (e.g. developer, which lets the agent run shell commands in the kernel tree)")
             .num_args(1))
         .get_matches();
 
@@ -321,6 +326,17 @@ fn main() {
                 } else {
                     error!("The 'exec' model provider requires --exec parameter to be set");
                     std::process::exit(1);
+                }
+            }
+
+            // Configure goose extensions if provided
+            if classifier.llm_providers.contains(&"goose".to_string())
+                && let Some(builtins) = matches.get_one::<String>("goose-builtins")
+            {
+                let goose_config = classifier.llm_configs.entry("goose".to_string())
+                    .or_insert_with(|| serde_json::json!({}));
+                if let Some(obj) = goose_config.as_object_mut() {
+                    obj.insert("builtins".to_string(), serde_json::json!(builtins));
                 }
             }
         }
@@ -577,6 +593,16 @@ fn main() {
                     error!("The 'exec' model provider requires --exec parameter to be set");
                     std::process::exit(1);
                 }
+            }
+
+            // Configure goose extensions if provided
+            if llm_providers.contains(&"goose".to_string())
+                && let Some(builtins) = matches.get_one::<String>("goose-builtins")
+            {
+                configs.insert("goose".to_string(), serde_json::json!({
+                    "debug_logging": verbose,
+                    "builtins": builtins
+                }));
             }
 
             Some(configs)

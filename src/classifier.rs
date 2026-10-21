@@ -1368,7 +1368,19 @@ REMEMBER: Last line MUST be exactly **YES** or **NO** - nothing else!"#;
             let mut llms = HashMap::new();
 
             for provider in &self.llm_providers {
-                let config = self.llm_configs.get(provider).cloned();
+                let mut config = self.llm_configs.get(provider).cloned();
+
+                // goose runs as an agent, so start it inside the kernel tree the
+                // verdict is about; the prompt tells it to inspect that checkout
+                if provider == "goose"
+                    && let Some(repo) = &self.repo_path
+                {
+                    let obj = config.get_or_insert_with(|| serde_json::json!({}));
+                    if let Some(map) = obj.as_object_mut() {
+                        map.entry("cwd").or_insert_with(|| serde_json::json!(repo));
+                    }
+                }
+
                 match commit_classifier::create_llm(provider, config) {
                     Ok(llm) => {
                         llms.insert(provider.clone(), llm);

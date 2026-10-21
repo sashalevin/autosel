@@ -5,7 +5,7 @@ AUTOSEL is a tool designed to automatically classify whether Linux kernel commit
 ## Features
 
 - Automated analysis of kernel commits to determine backport suitability
-- Support for multiple LLM providers (Claude, OpenAI, NVIDIA, Kiro)
+- Support for multiple LLM providers (Claude, OpenAI, NVIDIA, Kiro, goose)
 - Embeddings-based similar commit retrieval
 - Vector storage for efficient commit analysis
 - Batch processing capabilities
@@ -45,6 +45,16 @@ Set the following environment variables for the LLM providers you want to use:
 - `KIRO_API_KEY` - For Kiro (alternatively, use an existing `kiro-cli` browser login)
 
 For Kiro, no API key is needed if you already have an authenticated `kiro-cli` session (browser login). Set `KIRO_API_KEY` for headless/CI environments.
+
+For [goose](https://github.com/block/goose), autosel runs `goose run` in the kernel tree, so goose's own configuration and environment pick the backend (`GOOSE_PROVIDER`, `GOOSE_MODEL`, plus the provider's credentials). A local OpenAI-compatible server such as vLLM works through goose's `openai` provider:
+
+```
+GOOSE_PROVIDER=openai GOOSE_MODEL=OpenVINO/Qwen3-8B-int4-ov \
+OPENAI_HOST=http://localhost:8000 OPENAI_API_KEY=unused \
+./target/release/autosel --kernel-repo ~/path/to/linux --models goose --commit <SHA>
+```
+
+goose always offers the model at least one tool, so start vLLM with tool calling enabled (`--enable-auto-tool-choice --tool-call-parser hermes` for Qwen3), or set `GOOSE_TOOLSHIM=true` for a server without it. The autosel prompt alone is over 10k tokens, so the server's `--max-model-len` has to be well above that. By default goose gets no extensions; pass `--goose-builtins developer` to let the agent run git and other shell commands in the kernel tree.
 
 ## Usage
 
